@@ -1,0 +1,22 @@
+[FORMAT]
+
+max-line-length = 120
+
+[MESSAGES CONTROL]
+
+enable =
+    useless-suppression
+
+disable =
+    missing-docstring,
+    too-many-arguments,
+    no-else-return
+#   duplicate-code,
+#   invalid-name,
+#   fixme,
+#   protected-access,
+#   too-few-public-methods,
+#   too-many-instance-attributes,
+#   import-error,
+#   consider-using-f-string,
+#   logging-fstring-interpolation

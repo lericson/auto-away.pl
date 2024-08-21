@@ -5,124 +5,59 @@ Connect this to your Irssi with irssiproxy or whatever you use.
 
 from __future__ import annotations
 
-import sys
-import time
 import asyncio
-from math import log2
-from typing import Callable
+import sys
 from dataclasses import dataclass, field
+from math import log2
 
 import asyncirc
-
+from timer import Timer
 
 debug = asyncirc.debug
 
 
-inf = float('inf')
+open
 
-idle_timeout = 5 * 60.0  # seconds
+
+INF = float('inf')
+
+IDLE_TIMEOUT = 5 * 60.0  # seconds
 
 # The rule is that if we reset the idle timer 10% before or after its expiry,
 # we multiply the timeout by a backoff factor.
-idle_backoff_factor: float = 2
-idle_max_timeout: float = 3600.0
-idle_backoff_max_exp = int(log2(idle_max_timeout / idle_timeout))
-idle_backoff_deadzone = 1.0
-idle_max_timeout = idle_timeout * idle_backoff_factor**idle_backoff_max_exp
-idle_backoff_decay = 24 * 3600.0
+IDLE_BACKOFF_FACTOR: float = 2
+IDLE_MAX_TIMEOUT: float = 3600.0
+IDLE_BACKOFF_MAX_EXP = int(log2(IDLE_MAX_TIMEOUT / IDLE_TIMEOUT))
+IDLE_BACKOFF_DEADZONE = 1.0
+IDLE_MAX_TIMEOUT = IDLE_TIMEOUT * IDLE_BACKOFF_FACTOR**IDLE_BACKOFF_MAX_EXP
+IDLE_BACKOFF_DECAY = 24 * 3600.0
 
 
-class Timer:
-
-    __slots__ = 'started_at', 'duration'
-
-    started_at: float
-    duration:   float
-
-    clock: Callable[[], float] = time.monotonic
-
-    def __init__(self,
-                 duration: float,
-                 *,
-                 elapsed: float | None = None,
-                 starts_in: float | None = None,
-                 started_at: float | None = None) -> None:
-
-        if (elapsed is None) + (starts_in is None) + (started_at is None) < 2:
-            raise ValueError('specify one of elapsed, starts_in, started_at')
-
-        if started_at is None:
-            started_at = self.clock()
-
-        if elapsed is not None:
-            started_at -= elapsed
-
-        if starts_in is not None:
-            started_at += starts_in
-
-        self.started_at = started_at
-
-        if hasattr(duration, 'duration'):
-            duration = duration.duration
-
-        self.duration = duration
-
-    def __repr__(self) -> str:
-        tp = type(self)
-        name = f'{tp.__module__}.{tp.__name__}'
-        if self.is_started:
-            return f'{name}({self.remaining:.5g}, elapsed={self.elapsed:.5g})'
-        else:
-            return f'{name}({self.remaining:.5g}, starts_in={self.starts_in:.5g})'
-
-    @property
-    def is_running(self) -> bool:
-        return self.started_at < self.clock() < self.expires
-
-    @property
-    def is_started(self) -> bool:
-        return self.started_at < self.clock()
-
-    @property
-    def is_expired(self) -> bool:
-        return self.expires < self.clock()
-
-    @property
-    def is_never(self) -> bool:
-        return float('inf') <= self.expires
-
-    @property
-    def expires(self) -> float:
-        return self.started_at + self.duration
-
-    @property
-    def elapsed(self) -> float:
-        return self.clock() - self.started_at
-
-    @property
-    def remaining(self) -> float:
-        return self.duration - self.elapsed
-
-    @property
-    def starts_in(self) -> float:
-        return -self.elapsed
-
-    @classmethod
-    def never(cls) -> Timer:
-        return cls(float('inf'))
+def selftest() -> None:
+    assert Timer.never().is_never
+    assert not Timer(0.0).is_never
+    assert Timer(0).is_expired
+    timer = Timer.never()
+    intr = asyncirc.Interrupt()
+    async def waiter() -> None:
+        assert await intr.wait(timeout=timer.remaining)
+    async def triggerer() -> None:
+        wait_task = asyncio.create_task(waiter())
+        await asyncio.sleep(0.0)
+        intr.trigger()
+        await wait_task
+    asyncio.run(triggerer())
 
 
-assert Timer.never().is_never
-assert not Timer(0.0).is_never
-assert Timer(0).is_expired
+selftest()
 
 
 async def idle_away(control: Control, *,
-                    idle_timeout: float = idle_timeout,
-                    backoff_factor: float = idle_backoff_factor,
-                    backoff_max_exp: int = idle_backoff_max_exp,
-                    backoff_deadzone: float = idle_backoff_deadzone,
-                    backoff_decay: float = idle_backoff_decay) -> None:
+                    idle_timeout: float = IDLE_TIMEOUT,
+                    backoff_factor: float = IDLE_BACKOFF_FACTOR,
+                    backoff_max_exp: int = IDLE_BACKOFF_MAX_EXP,
+                    backoff_deadzone: float = IDLE_BACKOFF_DEADZONE,
+                    backoff_decay: float = IDLE_BACKOFF_DECAY) -> None:
 
     def make_idle_timer() -> Timer:
         return Timer(idle_timeout * (backoff_factor ** backoff_exp))
