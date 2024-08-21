@@ -172,6 +172,7 @@ class Client:
             assert self.is_away == awayness
 
     async def communicate(self, encoding='utf-8') -> None:
+        """Main communication coroutine"""
 
         self.my_nick = 'e'
         self.is_away = False

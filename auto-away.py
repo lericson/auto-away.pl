@@ -1,4 +1,4 @@
-"""IRC bot that sets itself away when it doesn't say anything.
+"""IRC bot that sets itself away when it hasn't said anything.
 
 Connect this to your Irssi with irssiproxy or whatever you use.
 """
@@ -13,10 +13,8 @@ from math import log2
 import asyncirc
 from timer import Timer
 
+
 debug = asyncirc.debug
-
-
-open
 
 
 INF = float('inf')
